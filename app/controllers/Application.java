@@ -1,12 +1,11 @@
 package controllers;
 
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netflix.ribbon.ClientOptions;
 import com.netflix.ribbon.Ribbon;
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import play.MakeModelRefDataRestClient;
 import play.libs.F;
 import play.libs.Json;
@@ -25,11 +24,12 @@ public class Application extends Controller {
 
     public static F.Promise<Result> index() {
         final SvcApi api = new RestAdapter.Builder()
-                .setEndpoint("http://m.mobile.de/svc")
+                .setEndpoint("http://m.mobile.de/svcERROR")
                 .build()
                 .create(SvcApi.class);
 
-        final Observable<SvcApi.Makes> makesObservable = api.makes("Car");
+        final Observable<SvcApi.Makes> makesObservable = api.makes("Car").onErrorReturn(t -> new SvcApi.Makes());
+
         final F.Promise<SvcApi.Makes> makesP = RxPlay.toPromise(makesObservable);
 
         return makesP.map(makes -> ok(Json.toJson(makes)));
@@ -67,11 +67,12 @@ public class Application extends Controller {
         final ribbon.SvcApi svcAPI = svcApi();
 
         final Observable<SvcApi.Makes> makes = makes(svcAPI, "Car");
-        final Observable<SvcApi.Models> models = models(svcAPI, 1900);
+        final Observable<SvcApi.Models> audiModels = models(svcAPI, 1900);
+        final Observable<SvcApi.Models> alfaRomeoModels = models(svcAPI, 900);
+        final Observable<SvcApi.Models> abathModels = models(svcAPI, 140);
 
-        final Observable<Pair<SvcApi.Makes, SvcApi.Models>> pairObs = Observable.zip(makes, models, (makes1, models1) -> new ImmutablePair(makes1, models1));
-
-        return RxPlay.toPromise(pairObs).map(pair -> ok(Json.toJson(pair)));
+        return RxPlay.toPromise(Observable.zip(makes, audiModels, alfaRomeoModels, abathModels, (makes1, models1, models2, models3)
+                -> ok(Json.toJson(ImmutableList.of(makes1, models1, models2)))));
     }
 
     private static Observable<SvcApi.Makes> makes(final ribbon.SvcApi svcApi, final String category) {
