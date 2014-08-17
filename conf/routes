@@ -8,7 +8,7 @@ GET     /index2                     controllers.Application.index2()
 GET     /index3                     controllers.Application.index3()
 GET     /index4                     controllers.Application.index4()
 GET     /index5                     controllers.Application.index5()
-
+GET     /index6                     controllers.Application.index6()
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

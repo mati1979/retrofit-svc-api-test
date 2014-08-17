@@ -9,11 +9,13 @@ import io.netty.buffer.ByteBuf;
 import play.MakeModelRefDataRestClient;
 import play.libs.F;
 import play.libs.Json;
+import play.libs.ws.WS;
 import play.mvc.Controller;
 import play.mvc.Result;
 import retrofit.RestAdapter;
 import retrofit.SvcApi;
 import rx.Observable;
+import utils.Promises;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -73,6 +75,67 @@ public class Application extends Controller {
 
         return RxPlay.toPromise(Observable.zip(makes, audiModels, alfaRomeoModels, abathModels, (makes1, models1, models2, models3)
                 -> ok(Json.toJson(ImmutableList.of(makes1, models1, models2)))));
+    }
+
+    public static F.Promise<Result> index7() {
+        F.Promise<SvcApi.Makes> makesP = makesP("Car");
+        F.Promise<SvcApi.Models> modelsP = modelsP(375);
+
+        return makesP.zip(modelsP).map(tuple -> {
+            return ok(Json.toJson(ImmutableList.of(tuple._1, tuple._2)));
+        });
+    }
+
+    public static F.Promise<Result> index8() {
+        F.Promise<SvcApi.Makes> makesP = makesP("Car");
+        F.Promise<SvcApi.Models> modelsP = modelsP(375);
+
+        return makesP.flatMap(makes -> modelsP.map(models -> {
+            return ok(Json.toJson(ImmutableList.of(makes, models)));
+        }));
+    }
+
+    public static F.Promise<Result> index9() {
+        F.Promise<SvcApi.Makes> makes1P = makesP("Car");
+        F.Promise<SvcApi.Makes> makes2P = makesP("Motorhome");
+
+        F.Promise<SvcApi.Models> models1P = modelsP(375);
+        F.Promise<SvcApi.Models> models2P = modelsP(1000);
+
+        return makes1P.flatMap(makes1 -> makes2P.flatMap(makes2 -> models1P.flatMap(models1 -> {
+            return models2P.map(models2 -> ok(Json.toJson(ImmutableList.of(makes1, makes2, models1, models2))));
+        })));
+    }
+
+    public static F.Promise<Result> index10() {
+        F.Promise<SvcApi.Makes> makesP = makesP("Car");
+        F.Promise<SvcApi.Models> modelsP = modelsP(375);
+
+        return Promises.zip(makesP, modelsP, (makes, models) -> {
+            return ok(Json.toJson(ImmutableList.of(makes, models)));
+        });
+    }
+
+    public static F.Promise<Result> index11() {
+        F.Promise<SvcApi.Makes> makesP = makesP("Car");
+        F.Promise<SvcApi.Models> models1P = modelsP(375);
+        F.Promise<SvcApi.Models> models2P = modelsP(376);
+
+        return Promises.zip(makesP, models1P, models2P, (makes, models1, models2) -> {
+            return ok(Json.toJson(ImmutableList.of(makes, models1, models2)));
+        });
+    }
+
+    private static F.Promise<SvcApi.Makes> makesP(final String category) {
+        return WS.url("http://m.mobile.de/svc/r/makes/" + category)
+                .get()
+                .map(response -> gson.fromJson(response.getBody(), SvcApi.Makes.class));
+    }
+
+    private static F.Promise<SvcApi.Models> modelsP(final int makeId) {
+        return WS.url("http://m.mobile.de/svc/r/models/" + makeId)
+                .get()
+                .map(response -> gson.fromJson(response.getBody(), SvcApi.Models.class));
     }
 
     private static Observable<SvcApi.Makes> makes(final ribbon.SvcApi svcApi, final String category) {
